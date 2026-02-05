@@ -1,0 +1,13 @@
+fastapi==0.115.0
+uvicorn==0.30.0
+sqlalchemy==2.0.35
+asyncpg==0.30.0
+pydantic-settings==2.5.0
+aiogram==3.13.0
+anthropic==0.42.0
+python-jose==3.3.0
+bcrypt==4.2.0
+python-dotenv==1.0.1
+email-validator==2.1.0
+httpx==0.27.0
+alembic==1.13.0
