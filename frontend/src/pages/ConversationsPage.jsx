@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { getConversations } from "../services/api";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { getConversations, getStats } from "../services/api";
 
 const STATUS_LABELS = {
   in_progress: "В процессе",
@@ -35,16 +35,23 @@ const FILTERS = [
 ];
 
 export default function ConversationsPage() {
+  const [searchParams] = useSearchParams();
   const [conversations, setConversations] = useState([]);
-  const [filter, setFilter] = useState("");
+  const [stats, setStats] = useState(null);
+  const [filter, setFilter] = useState(searchParams.get("filter") || "");
+  const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   const load = async () => {
     setLoading(true);
     try {
-      const res = await getConversations(filter || undefined);
-      setConversations(res.data);
+      const [convRes, statsRes] = await Promise.all([
+        getConversations(filter || undefined, search || undefined),
+        getStats(),
+      ]);
+      setConversations(convRes.data);
+      setStats(statsRes.data);
     } catch (err) {
       console.error(err);
     }
@@ -53,10 +60,9 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     load();
-    // Обновляем каждые 10 секунд
     const interval = setInterval(load, 10000);
     return () => clearInterval(interval);
-  }, [filter]);
+  }, [filter, search]);
 
   return (
     <div className="conversations-page">
@@ -66,6 +72,35 @@ export default function ConversationsPage() {
           Обновить
         </button>
       </div>
+
+      {stats && (
+        <div className="stats-grid">
+          <div className="stat-card">
+            <div className="stat-number">{stats.today.total}</div>
+            <div className="stat-label">Сегодня всего</div>
+          </div>
+          <div className="stat-card stat-bot">
+            <div className="stat-number">{stats.today.bot_completed}</div>
+            <div className="stat-label">Бот справился</div>
+          </div>
+          <div className="stat-card stat-operator">
+            <div className="stat-number">{stats.today.needs_operator + stats.today.operator_active}</div>
+            <div className="stat-label">Менеджер</div>
+          </div>
+          <div className="stat-card stat-all">
+            <div className="stat-number">{stats.total.total}</div>
+            <div className="stat-label">Всего диалогов</div>
+          </div>
+        </div>
+      )}
+
+      <input
+        className="search-input"
+        type="text"
+        placeholder="Поиск по имени клиента..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+      />
 
       <div className="filters">
         {FILTERS.map((f) => (
@@ -88,7 +123,7 @@ export default function ConversationsPage() {
           {conversations.map((conv) => (
             <div
               key={conv.id}
-              className="conversation-card"
+              className={`conversation-card${conv.status === "needs_operator" ? " needs-operator" : ""}`}
               onClick={() => navigate(`/chat/${conv.id}`)}
             >
               <div className="conv-top">
@@ -107,7 +142,7 @@ export default function ConversationsPage() {
                   {CATEGORY_LABELS[conv.category]}
                 </span>
                 <span className="conv-channel">
-                  {conv.client?.channel === "telegram" ? "Telegram" : "WhatsApp"}
+                  {conv.client?.channel === "whatsapp" ? "📱 WhatsApp" : "✈️ Telegram"}
                 </span>
                 <span className="conv-date">
                   {new Date(conv.updated_at).toLocaleString("ru-RU")}

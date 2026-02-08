@@ -1,5 +1,11 @@
 import enum
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
+
+BISHKEK_TZ = timezone(timedelta(hours=6))
+
+
+def now_bishkek():
+    return datetime.now(BISHKEK_TZ).replace(tzinfo=None)
 
 from sqlalchemy import (
     Column,
@@ -64,7 +70,7 @@ class Client(Base):
     channel = Column(Enum(ChannelType), nullable=False)
     channel_user_id = Column(String(255), nullable=False)  # ID в мессенджере
     language = Column(Enum(Language), default=Language.ru)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_bishkek)
 
     conversations = relationship("Conversation", back_populates="client")
 
@@ -78,8 +84,8 @@ class Conversation(Base):
     status = Column(Enum(ConversationStatus), default=ConversationStatus.in_progress)
     category = Column(Enum(ConversationCategory), default=ConversationCategory.general)
     assigned_operator_id = Column(Integer, ForeignKey("operators.id"), nullable=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_at = Column(DateTime, default=now_bishkek)
+    updated_at = Column(DateTime, default=now_bishkek, onupdate=now_bishkek)
 
     client = relationship("Client", back_populates="conversations")
     messages = relationship("Message", back_populates="conversation")
@@ -94,7 +100,7 @@ class Message(Base):
     conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=False)
     sender = Column(Enum(MessageSender), nullable=False)
     text = Column(Text, nullable=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_bishkek)
 
     conversation = relationship("Conversation", back_populates="messages")
 
@@ -110,7 +116,7 @@ class Operator(Base):
     is_admin = Column(Boolean, default=False)
     telegram_id = Column(String(255), nullable=True)  # Для уведомлений в TG
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_bishkek)
 
     conversations = relationship("Conversation", back_populates="assigned_operator")
 
@@ -125,4 +131,22 @@ class Booking(Base):
     category = Column(Enum(ConversationCategory), nullable=False)
     details = Column(Text, nullable=True)  # JSON с деталями (дата, время, кол-во и т.д.)
     confirmed = Column(Boolean, default=False)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=now_bishkek)
+
+
+class KnowledgeBase(Base):
+    """База знаний — ответы которые бот выучил от менеджеров"""
+    __tablename__ = "knowledge_base"
+
+    id = Column(Integer, primary_key=True)
+    question = Column(Text, nullable=False)      # Вопрос клиента
+    answer = Column(Text, nullable=False)        # Ответ менеджера
+    keywords = Column(Text, nullable=True)       # Ключевые слова для поиска
+    added_by_id = Column(Integer, ForeignKey("operators.id"), nullable=True)
+    conversation_id = Column(Integer, ForeignKey("conversations.id"), nullable=True)
+    is_active = Column(Boolean, default=True)    # Можно отключить без удаления
+    times_used = Column(Integer, default=0)      # Сколько раз использовался
+    created_at = Column(DateTime, default=now_bishkek)
+    updated_at = Column(DateTime, default=now_bishkek, onupdate=now_bishkek)
+
+    added_by = relationship("Operator")

@@ -1,4 +1,6 @@
-from sqlalchemy import select
+from datetime import datetime, timedelta, timezone
+
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models.models import (
@@ -103,3 +105,20 @@ async def get_conversation_history(
     messages = list(result.scalars().all())
     messages.reverse()  # Хронологический порядок
     return messages
+
+
+async def close_stale_conversations(session: AsyncSession, timeout_hours: int = 1) -> int:
+    """Закрыть диалоги in_progress без активности больше timeout_hours.
+    НЕ трогает needs_operator и operator_active.
+    Возвращает количество закрытых диалогов."""
+    cutoff = datetime.utcnow() - timedelta(hours=timeout_hours)
+    result = await session.execute(
+        update(Conversation)
+        .where(
+            Conversation.status == ConversationStatus.in_progress,
+            Conversation.updated_at < cutoff,
+        )
+        .values(status=ConversationStatus.bot_completed)
+    )
+    await session.commit()
+    return result.rowcount

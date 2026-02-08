@@ -94,6 +94,7 @@ export default function ChatPage() {
         </button>
         <div className="chat-info">
           <span className="chat-client-name">
+            {client?.channel === "whatsapp" ? "📱" : "✈️"}{" "}
             {client?.name || client?.username || `Клиент #${conversation.client_id}`}
           </span>
           <span className="chat-status">

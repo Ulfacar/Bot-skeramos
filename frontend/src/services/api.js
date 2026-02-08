@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: "/api",
+  baseURL: import.meta.env.VITE_API_URL || "/api",
 });
 
 // Добавляем JWT токен к каждому запросу
@@ -32,10 +32,12 @@ export const login = (email, password) =>
 export const getMe = () => api.get("/auth/me");
 
 // --- Conversations ---
-export const getConversations = (status) =>
-  api.get("/conversations/", { params: status ? { status } : {} });
+export const getConversations = (status, search) =>
+  api.get("/conversations/", { params: { ...(status && { status }), ...(search && { search }) } });
 
 export const getConversation = (id) => api.get(`/conversations/${id}`);
+
+export const getStats = () => api.get("/conversations/stats");
 
 export const updateConversation = (id, data) =>
   api.patch(`/conversations/${id}`, data);
@@ -46,5 +48,16 @@ export const getMessages = (conversationId) =>
 
 export const sendMessage = (conversationId, text) =>
   api.post(`/conversations/${conversationId}/messages/`, { text });
+
+// --- Knowledge Base ---
+export const getKnowledgeEntries = () => api.get("/knowledge");
+
+export const createKnowledgeEntry = (question, answer) =>
+  api.post("/knowledge", { question, answer });
+
+export const updateKnowledgeEntry = (id, data) =>
+  api.put(`/knowledge/${id}`, data);
+
+export const deleteKnowledgeEntry = (id) => api.delete(`/knowledge/${id}`);
 
 export default api;
