@@ -16,13 +16,15 @@ class Settings(BaseSettings):
     # Telegram
     telegram_bot_token: str = ""
 
+    # WhatsApp (Gupshup)
     # WhatsApp (Meta Cloud API)
     whatsapp_token: str = ""
     whatsapp_phone_id: str = ""
     whatsapp_verify_token: str = "skeramos_webhook_verify"
 
-    # AI
-    anthropic_api_key: str = ""
+    # AI (OpenRouter)
+    openrouter_api_key: str = ""
+    ai_model: str = "deepseek/deepseek-chat"
 
     # JWT для админки
     secret_key: str = "change-me-in-production"

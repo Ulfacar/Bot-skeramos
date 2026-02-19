@@ -226,20 +226,21 @@ async def handle_finish_callback(callback: types.CallbackQuery):
                     operator_id=operator.id,
                     conversation_id=conversation_id,
                 )
+                await callback.answer()
                 await callback.message.edit_text(
                     "✅ Диалог завершён.\n\n"
                     "🧠 Бот запомнил этот ответ и в следующий раз ответит сам!"
                 )
             else:
+                await callback.answer()
                 await callback.message.edit_text(
                     "✅ Диалог завершён. Жду новых уведомлений."
                 )
         else:
+            await callback.answer()
             await callback.message.edit_text(
                 "✅ Диалог завершён. Жду новых уведомлений."
             )
-
-    await callback.answer()
 
 
 @router.message()
@@ -340,7 +341,7 @@ async def handle_operator_message(message: types.Message, session, operator, ope
     # Отправляем ответ клиенту (Telegram или WhatsApp)
     try:
         if client.channel == ChannelType.whatsapp:
-            # Клиент из WhatsApp — отправляем через Twilio
+            # Клиент из WhatsApp — отправляем через Meta Cloud API
             from app.services.meta_whatsapp import send_whatsapp_message
             success = await send_whatsapp_message(
                 client.channel_user_id, message.text
@@ -387,8 +388,23 @@ async def handle_client_message(message: types.Message, session):
 
     # 2. Найти активный диалог или создать новый
     conversation = await get_active_conversation(session, client.id)
+    is_new_conversation = conversation is None
     if not conversation:
         conversation = await create_conversation(session, client.id)
+
+    # 2.1. Приветственное сообщение для нового диалога
+    if is_new_conversation:
+        greeting = (
+            "Здравствуйте! Я виртуальный ассистент SKERAMOS 🏺\n"
+            "Помогу ответить на вопросы о нашей керамической студии, "
+            "мини-отеле и мероприятиях.\n\n"
+            "Если потребуется — подключу менеджера. Чем могу помочь?"
+        )
+        await message.answer(greeting)
+        await save_message(
+            session, conversation.id, MessageSender.bot, greeting
+        )
+        await session.commit()
 
     # 3. Сохранить сообщение клиента
     await save_message(

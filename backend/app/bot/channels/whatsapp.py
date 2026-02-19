@@ -3,7 +3,7 @@ WhatsApp канал через Meta Cloud API.
 Обработка входящих сообщений и отправка ответов.
 """
 import logging
-from fastapi import APIRouter, Request, Query, HTTPException
+from fastapi import APIRouter, Request, Query
 from fastapi.responses import PlainTextResponse
 
 from app.bot.ai.assistant import (
@@ -30,10 +30,10 @@ from app.services.notification import notify_operators_new_request
 from app.services.knowledge import search_knowledge_base
 from app.services.meta_whatsapp import (
     send_whatsapp_message,
-    verify_webhook,
     parse_webhook_message,
     is_whatsapp_configured,
 )
+from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -42,22 +42,19 @@ router = APIRouter()
 
 @router.get("/webhook/whatsapp")
 async def whatsapp_webhook_verify(
-    mode: str = Query(None, alias="hub.mode"),
-    token: str = Query(None, alias="hub.verify_token"),
-    challenge: str = Query(None, alias="hub.challenge"),
+    hub_mode: str = Query(default=None, alias="hub.mode"),
+    hub_verify_token: str = Query(default=None, alias="hub.verify_token"),
+    hub_challenge: str = Query(default=None, alias="hub.challenge"),
 ):
     """
-    Верификация webhook от Meta.
-    Meta отправляет GET запрос при настройке webhook в Developer Console.
+    Верификация webhook от Meta (GET запрос).
     """
-    if not mode or not token or not challenge:
-        raise HTTPException(status_code=400, detail="Missing parameters")
+    if hub_mode == "subscribe" and hub_verify_token == settings.whatsapp_verify_token and hub_challenge:
+        logger.info("WhatsApp webhook верифицирован")
+        return PlainTextResponse(hub_challenge)
 
-    result = verify_webhook(mode, token, challenge)
-    if result:
-        return PlainTextResponse(result)
-
-    raise HTTPException(status_code=403, detail="Verification failed")
+    logger.warning("WhatsApp webhook верификация провалена")
+    return PlainTextResponse("Forbidden", status_code=403)
 
 
 @router.post("/webhook/whatsapp")
@@ -66,7 +63,7 @@ async def whatsapp_webhook(request: Request):
     Webhook для приёма сообщений от Meta WhatsApp Cloud API.
     """
     if not is_whatsapp_configured():
-        logger.warning("WhatsApp не настроен, игнорируем webhook")
+        logger.warning("WhatsApp (Meta Cloud API) не настроен, игнорируем webhook")
         return PlainTextResponse("OK")
 
     try:
@@ -77,7 +74,6 @@ async def whatsapp_webhook(request: Request):
     # Парсим сообщение
     message_data = parse_webhook_message(data)
     if not message_data:
-        # Это может быть статус доставки или другое событие
         return PlainTextResponse("OK")
 
     # Обрабатываем сообщение
@@ -90,7 +86,6 @@ async def whatsapp_webhook(request: Request):
     except Exception as e:
         logger.error(f"Ошибка обработки WhatsApp сообщения: {e}")
 
-    # Meta ожидает 200 OK
     return PlainTextResponse("OK")
 
 
@@ -118,18 +113,50 @@ async def handle_whatsapp_message(
 
         # 2. Найти активный диалог или создать новый
         conversation = await get_active_conversation(session, client.id)
+        is_new_conversation = conversation is None
         if not conversation:
             conversation = await create_conversation(session, client.id)
+
+        # 2.1. Приветственное сообщение для нового диалога
+        if is_new_conversation:
+            greeting = (
+                "Здравствуйте! Я виртуальный ассистент SKERAMOS 🏺\n"
+                "Помогу ответить на вопросы о нашей керамической студии, "
+                "мини-отеле и мероприятиях.\n\n"
+                "Если потребуется — подключу менеджера. Чем могу помочь?"
+            )
+            await send_whatsapp_message(phone_number, greeting)
+            await save_message(
+                session, conversation.id, MessageSender.bot, greeting
+            )
+            await session.commit()
 
         # 3. Сохранить сообщение клиента
         await save_message(
             session, conversation.id, MessageSender.client, message_text
         )
 
-        # 4. Если диалог ведёт оператор — просто сохраняем
+        # 4. Если диалог ведёт оператор — пересылаем ему сообщение
         if conversation.status == ConversationStatus.operator_active:
+            if conversation.assigned_operator_id:
+                from app.db.models.models import Operator
+                from app.bot.channels.telegram import get_bot
+                from sqlalchemy import select as sa_select
+
+                op_result = await session.execute(
+                    sa_select(Operator).where(Operator.id == conversation.assigned_operator_id)
+                )
+                assigned_operator = op_result.scalar_one_or_none()
+                tg_bot = get_bot()
+                if assigned_operator and assigned_operator.telegram_id and tg_bot:
+                    try:
+                        await tg_bot.send_message(
+                            chat_id=assigned_operator.telegram_id,
+                            text=f"💬 Новое сообщение от гостя в WhatsApp (диалог #{conversation.id}):\n\n{message_text}",
+                        )
+                    except Exception as e:
+                        logger.error(f"Ошибка уведомления менеджера о WhatsApp сообщении: {e}")
             await session.commit()
-            # TODO: уведомить оператора о новом сообщении
             return
 
         # 5. Ищем ответ в базе знаний
@@ -140,7 +167,7 @@ async def handle_whatsapp_message(
             response_text = format_knowledge_answer(knowledge_entry.answer)
             logger.info(f"WhatsApp: ответ из базы знаний (id={knowledge_entry.id})")
         else:
-            # Спрашиваем Claude
+            # Спрашиваем AI
             history = await get_conversation_history(session, conversation.id)
             response_text = await generate_response(history)
 
