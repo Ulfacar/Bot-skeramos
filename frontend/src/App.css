@@ -746,3 +746,127 @@ body {
 .btn-save:hover {
   background: #2563eb;
 }
+
+/* --- Operators Page --- */
+
+.operators-page {
+  max-width: 900px;
+  margin: 0 auto;
+}
+
+.operators-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.operators-header h1 {
+  font-size: 24px;
+}
+
+.operators-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.operator-card {
+  background: white;
+  border-radius: 10px;
+  padding: 16px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+}
+
+.operator-card.inactive {
+  opacity: 0.6;
+  background: #f9fafb;
+}
+
+.operator-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.operator-name {
+  font-weight: 600;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.badge-admin {
+  background: #3b82f6;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.operator-details {
+  display: flex;
+  gap: 16px;
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.operator-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-toggle-op {
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  border: 1px solid #d1d5db;
+  background: #22c55e;
+  color: white;
+}
+
+.btn-toggle-op.active {
+  background: #ef4444;
+  border-color: #ef4444;
+}
+
+.btn-toggle-op:hover {
+  opacity: 0.9;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"] {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="email"]:focus,
+.form-group input[type="password"]:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+}

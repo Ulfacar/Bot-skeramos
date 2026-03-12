@@ -60,4 +60,15 @@ export const updateKnowledgeEntry = (id, data) =>
 
 export const deleteKnowledgeEntry = (id) => api.delete(`/knowledge/${id}`);
 
+// --- Operators ---
+export const getOperators = () => api.get("/operators/");
+
+export const createOperator = (data) => api.post("/operators/", data);
+
+export const deactivateOperator = (id) =>
+  api.patch(`/operators/${id}/deactivate`);
+
+export const activateOperator = (id) =>
+  api.patch(`/operators/${id}/activate`);
+
 export default api;

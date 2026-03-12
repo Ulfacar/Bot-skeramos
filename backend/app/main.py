@@ -54,6 +54,7 @@ async def status():
 async def auto_close_loop():
     """Фоновая задача: закрывать неактивные диалоги каждые 5 минут."""
     logger = logging.getLogger(__name__)
+    consecutive_errors = 0
     while True:
         await asyncio.sleep(300)  # 5 минут
         try:
@@ -61,8 +62,13 @@ async def auto_close_loop():
                 closed = await close_stale_conversations(session, timeout_hours=1)
                 if closed:
                     logger.info(f"Автозакрытие: {closed} диалогов")
+            consecutive_errors = 0
         except Exception as e:
-            logger.error(f"Ошибка автозакрытия: {e}")
+            consecutive_errors += 1
+            logger.error(f"Ошибка автозакрытия ({consecutive_errors}): {e}")
+            if consecutive_errors >= 5:
+                logger.critical("Автозакрытие: 5 ошибок подряд, пауза 30 минут")
+                await asyncio.sleep(1800)
 
 
 @app.on_event("startup")

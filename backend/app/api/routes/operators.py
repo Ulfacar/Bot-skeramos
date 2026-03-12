@@ -76,3 +76,26 @@ async def deactivate_operator(
     await session.commit()
     await session.refresh(operator)
     return operator
+
+
+@router.patch("/{operator_id}/activate", response_model=OperatorOut)
+async def activate_operator(
+    operator_id: int,
+    session: AsyncSession = Depends(get_session),
+    current: Operator = Depends(get_current_operator),
+):
+    """Активировать менеджера. Только для админов."""
+    if not current.is_admin:
+        raise HTTPException(status_code=403, detail="Только для админов")
+
+    result = await session.execute(
+        select(Operator).where(Operator.id == operator_id)
+    )
+    operator = result.scalar_one_or_none()
+    if not operator:
+        raise HTTPException(status_code=404, detail="Менеджер не найден")
+
+    operator.is_active = True
+    await session.commit()
+    await session.refresh(operator)
+    return operator

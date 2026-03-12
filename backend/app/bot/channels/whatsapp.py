@@ -69,7 +69,10 @@ async def whatsapp_webhook(request: Request):
     try:
         data = await request.json()
     except Exception:
+        logger.error("WhatsApp webhook: не удалось распарсить JSON")
         return PlainTextResponse("OK")
+
+    logger.info(f"WhatsApp webhook получен: {data}")
 
     # Парсим сообщение
     message_data = parse_webhook_message(data)

@@ -47,6 +47,8 @@ async def send_whatsapp_message(to: str, text: str) -> bool:
         "text": {"body": text},
     }
 
+    logger.info(f"WhatsApp отправка → {phone}, url={url}")
+
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(url, headers=headers, json=payload)

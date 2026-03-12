@@ -8,6 +8,7 @@ from sqlalchemy.orm import selectinload
 from app.api.schemas import MessageCreate, MessageOut
 from app.bot.channels.telegram import get_bot
 from app.core.auth import get_current_operator
+from app.services.meta_whatsapp import send_whatsapp_message
 from app.db.database import get_session
 from app.db.models.models import (
     ChannelType,
@@ -66,10 +67,12 @@ async def send_message(
         conversation.status = ConversationStatus.operator_active
         conversation.assigned_operator_id = operator.id
 
+    clean_text = data.clean_text
+
     message = Message(
         conversation_id=conversation_id,
         sender=MessageSender.operator,
-        text=data.text,
+        text=clean_text,
     )
     session.add(message)
     await session.commit()
@@ -77,14 +80,20 @@ async def send_message(
 
     # Отправляем сообщение клиенту в мессенджер
     client = conversation.client
-    tg_bot = get_bot()
-    if client.channel == ChannelType.telegram and tg_bot:
+    if client.channel == ChannelType.telegram:
+        tg_bot = get_bot()
+        if tg_bot:
+            try:
+                await tg_bot.send_message(
+                    chat_id=int(client.channel_user_id),
+                    text=clean_text,
+                )
+            except Exception as e:
+                logger.error(f"Ошибка отправки в Telegram: {e}")
+    elif client.channel == ChannelType.whatsapp:
         try:
-            await tg_bot.send_message(
-                chat_id=int(client.channel_user_id),
-                text=data.text,
-            )
+            await send_whatsapp_message(client.channel_user_id, clean_text)
         except Exception as e:
-            logger.error(f"Ошибка отправки в Telegram: {e}")
+            logger.error(f"Ошибка отправки в WhatsApp: {e}")
 
     return message

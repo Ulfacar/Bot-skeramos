@@ -122,8 +122,8 @@ async def close_stale_conversations(session: AsyncSession, timeout_hours: int = 
     - needs_operator без активности > 4 часов → closed
     НЕ трогает operator_active (менеджер работает).
     Возвращает количество закрытых диалогов."""
-    cutoff = datetime.now(timezone.utc) - timedelta(hours=timeout_hours)
-    cutoff_long = datetime.now(timezone.utc) - timedelta(hours=4)
+    cutoff = datetime.utcnow() - timedelta(hours=timeout_hours)
+    cutoff_long = datetime.utcnow() - timedelta(hours=4)
 
     # Закрываем in_progress и bot_completed
     result1 = await session.execute(

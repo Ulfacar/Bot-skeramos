@@ -1,4 +1,8 @@
+import logging
+
 from pydantic_settings import BaseSettings
+
+logger = logging.getLogger(__name__)
 
 
 class Settings(BaseSettings):
@@ -35,3 +39,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+if settings.secret_key == "change-me-in-production" and not settings.debug:
+    logger.critical("SECRET_KEY не изменён! Установите уникальный SECRET_KEY в .env")
+
+if not settings.openrouter_api_key:
+    logger.warning("OPENROUTER_API_KEY не задан — бот будет отвечать заглушкой")

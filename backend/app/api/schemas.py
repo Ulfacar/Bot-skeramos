@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 
 from app.db.models.models import (
     ChannelType,
@@ -32,6 +32,13 @@ class OperatorCreate(BaseModel):
     password: str
     is_admin: bool = False
     telegram_id: Optional[str] = None
+
+    @field_validator("password")
+    @classmethod
+    def password_min_length(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Пароль должен быть не менее 8 символов")
+        return v
 
 
 class OperatorOut(BaseModel):
@@ -96,3 +103,7 @@ class MessageOut(BaseModel):
 
 class MessageCreate(BaseModel):
     text: str
+
+    @property
+    def clean_text(self) -> str:
+        return self.text[:5000]

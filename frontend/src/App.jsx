@@ -5,6 +5,7 @@ import LoginPage from "./pages/LoginPage";
 import ConversationsPage from "./pages/ConversationsPage";
 import ChatPage from "./pages/ChatPage";
 import KnowledgePage from "./pages/KnowledgePage";
+import OperatorsPage from "./pages/OperatorsPage";
 
 function PrivateRoute({ children }) {
   const [checking, setChecking] = useState(true);
@@ -91,6 +92,9 @@ export default function App() {
             <button className="btn-knowledge" onClick={() => navigate("/knowledge")}>
               📚 База знаний
             </button>
+            <button className="btn-knowledge" onClick={() => navigate("/operators")}>
+              👥 Менеджеры
+            </button>
             <button className="btn-logout" onClick={handleLogout}>
               Выйти
             </button>
@@ -122,6 +126,14 @@ export default function App() {
             element={
               <PrivateRoute>
                 <KnowledgePage />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/operators"
+            element={
+              <PrivateRoute>
+                <OperatorsPage />
               </PrivateRoute>
             }
           />
